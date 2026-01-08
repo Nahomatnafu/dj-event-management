@@ -61,11 +61,14 @@ export default function AdminDashboardPage() {
 
       if (logsRes.ok) {
         const logsData = await logsRes.json();
-        setLogs(logsData.logs);
+        console.log('Fetched logs:', logsData);
+        setLogs(logsData.logs || []);
+      } else {
+        console.error('Failed to fetch logs:', logsRes.status, await logsRes.text());
       }
       if (usersRes.ok) {
         const usersData = await usersRes.json();
-        setUsers(usersData.users.filter((u: any) => u.role === 'staff'));
+        setUsers(usersData.users?.filter((u: any) => u.role === 'staff') || []);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -177,6 +180,18 @@ export default function AdminDashboardPage() {
       return <Badge variant="destructive">{status}</Badge>;
     }
     return <Badge>{status}</Badge>;
+  };
+
+  // Convert 24hr time (HH:MM) to 12hr AM/PM format
+  const formatTimeToAMPM = (time: string) => {
+    if (!time) return '';
+    const [hourStr, minuteStr] = time.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = minuteStr || '00';
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    if (hour === 0) hour = 12;
+    return `${hour}:${minute} ${ampm}`;
   };
 
   const pendingCount = logs.filter(log => log.status === 'pending').length;
@@ -364,7 +379,7 @@ export default function AdminDashboardPage() {
                         <TableCell>{log.clientName}</TableCell>
                         <TableCell>{log.venue}</TableCell>
                         <TableCell className="whitespace-nowrap">
-                          {log.startTime} - {log.endTime}
+                          {formatTimeToAMPM(log.startTime)} - {formatTimeToAMPM(log.endTime)}
                         </TableCell>
                         <TableCell className="font-medium">{log.totalHours}h</TableCell>
                         <TableCell>{getStatusBadge(log.status)}</TableCell>
@@ -469,11 +484,11 @@ export default function AdminDashboardPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Start Time</Label>
-                  <p className="font-medium">{selectedLog.startTime}</p>
+                  <p className="font-medium">{formatTimeToAMPM(selectedLog.startTime)}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">End Time</Label>
-                  <p className="font-medium">{selectedLog.endTime}</p>
+                  <p className="font-medium">{formatTimeToAMPM(selectedLog.endTime)}</p>
                 </div>
               </div>
 

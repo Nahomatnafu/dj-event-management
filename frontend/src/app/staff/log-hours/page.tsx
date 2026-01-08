@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('auth_token');
@@ -43,6 +44,8 @@ export default function LogHoursPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== 'staff')) {
@@ -147,6 +150,18 @@ export default function LogHoursPage() {
       return <Badge variant="destructive">{status}</Badge>;
     }
     return <Badge>{status}</Badge>;
+  };
+
+  // Convert 24hr time (HH:MM) to 12hr AM/PM format
+  const formatTimeToAMPM = (time: string) => {
+    if (!time) return '';
+    const [hourStr, minuteStr] = time.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = minuteStr || '00';
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    if (hour === 0) hour = 12;
+    return `${hour}:${minute} ${ampm}`;
   };
 
   if (authLoading) {
@@ -354,7 +369,14 @@ export default function LogHoursPage() {
                       </TableRow>
                     ) : (
                       recentLogs.map((log) => (
-                        <TableRow key={log.id}>
+                        <TableRow
+                          key={log.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => {
+                            setSelectedLog(log);
+                            setDetailDialogOpen(true);
+                          }}
+                        >
                           <TableCell>{new Date(log.date).toLocaleDateString()}</TableCell>
                           <TableCell className="font-medium">{log.clientName}</TableCell>
                           <TableCell>{log.totalHours}h</TableCell>
@@ -369,6 +391,92 @@ export default function LogHoursPage() {
           </Card>
         </div>
       </div>
+
+      {/* Submission Detail Modal */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Submission Details</DialogTitle>
+            <DialogDescription>View your submitted hour log entry</DialogDescription>
+          </DialogHeader>
+
+          {selectedLog && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Status</span>
+                {getStatusBadge(selectedLog.status)}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Date</Label>
+                <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                  {new Date(selectedLog.date).toLocaleDateString()}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Service Category</Label>
+                <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                  {selectedLog.serviceCategory}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Event Type</Label>
+                <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                  {selectedLog.eventType}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Client Name</Label>
+                <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                  {selectedLog.clientName}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Venue</Label>
+                <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                  {selectedLog.venue}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Start Time</Label>
+                  <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                    {formatTimeToAMPM(selectedLog.startTime)}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">End Time</Label>
+                  <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                    {formatTimeToAMPM(selectedLog.endTime)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-md bg-muted p-4">
+                <div className="text-sm font-medium">Total Hours: {selectedLog.totalHours}</div>
+              </div>
+
+              {selectedLog.notes && (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Notes</Label>
+                  <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                    {selectedLog.notes}
+                  </div>
+                </div>
+              )}
+
+              <div className="text-xs text-muted-foreground pt-2 border-t">
+                Submitted: {new Date(selectedLog.createdAt).toLocaleString()}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
